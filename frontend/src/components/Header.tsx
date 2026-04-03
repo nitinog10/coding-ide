@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEditor } from '../contexts/EditorContext';
 import { userAPI } from '../services/api';
 import type { UserStats } from '../types';
 
@@ -9,7 +9,6 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleAI, onToggleProjects }: HeaderProps) {
-  const { user, logout } = useAuth();
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
@@ -21,7 +20,8 @@ export default function Header({ onToggleAI, onToggleProjects }: HeaderProps) {
       const response = await userAPI.getStats();
       setStats(response.stats);
     } catch (error) {
-      console.error('Failed to load stats:', error);
+      // Stats not available without auth - that's ok
+      console.log('Stats not available');
     }
   };
 
@@ -68,20 +68,8 @@ export default function Header({ onToggleAI, onToggleProjects }: HeaderProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-sm font-medium text-white">{user?.username}</div>
-              <div className="text-xs text-dark-400">{user?.email}</div>
-            </div>
-            <button
-              onClick={logout}
-              className="text-dark-400 hover:text-white transition"
-              title="Logout"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
+          <div className="text-sm text-dark-400">
+            No Auth Mode
           </div>
         </div>
       </div>

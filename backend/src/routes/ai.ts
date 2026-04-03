@@ -1,9 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { authenticateToken } from '../middleware/auth';
 import { aiService } from '../services/aiService';
 import { AppError } from '../middleware/errorHandler';
-import { AuthRequest, AIAction, CodeContext } from '../types';
+import { AIAction, CodeContext } from '../types';
 import { logger } from '../utils/logger';
 import rateLimit from 'express-rate-limit';
 
@@ -16,10 +15,9 @@ const aiLimiter = rateLimit({
   message: 'Too many AI requests, please try again later'
 });
 
-// AI assistance endpoint
+// AI assistance endpoint (no auth required for demo)
 router.post(
   '/assist',
-  authenticateToken,
   aiLimiter,
   [
     body('query').trim().notEmpty().withMessage('Query is required'),
@@ -28,7 +26,7 @@ router.post(
     body('codeContext.code').optional().isString(),
     body('action').isIn(['explain', 'debug', 'optimize', 'convert', 'chat']).withMessage('Invalid action')
   ],
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
+  async (req: any, res: Response, next: NextFunction) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -36,9 +34,8 @@ router.post(
       }
 
       const { query, codeContext, action } = req.body;
-      const userId = req.user!.id;
 
-      logger.info('AI assistance requested', { userId, action, language: codeContext.language });
+      logger.info('AI assistance requested', { action, language: codeContext.language });
 
       // Call AI service
       const result = await aiService.assistWithCode(
