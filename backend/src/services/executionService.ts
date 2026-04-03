@@ -183,15 +183,13 @@ export class ExecutionService {
 
     // Write code to container
     const codeContent = Buffer.from(code, 'utf-8');
-    await container.putArchive(
-      this.createTarArchive(fileName, codeContent),
-      { path: '/code' }
-    );
+    const tarArchive = await this.createTarArchive(fileName, codeContent);
+    await container.putArchive(tarArchive, { path: '/code' });
 
     return container;
   }
 
-  private createTarArchive(fileName: string, content: Buffer): Buffer {
+  private createTarArchive(fileName: string, content: Buffer): Promise<Buffer> {
     const tar = require('tar-stream');
     const pack = tar.pack();
     
@@ -201,7 +199,7 @@ export class ExecutionService {
     const chunks: Buffer[] = [];
     pack.on('data', (chunk: Buffer) => chunks.push(chunk));
     
-    return new Promise((resolve, reject) => {
+    return new Promise<Buffer>((resolve, reject) => {
       pack.on('end', () => resolve(Buffer.concat(chunks)));
       pack.on('error', reject);
     });
