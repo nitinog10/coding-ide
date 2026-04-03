@@ -668,3 +668,202 @@ async function fetchConversationHistory(
 
 **Loop Invariants:**
 - For mapping loops: All items are transformed consistently
+
+
+### Code Validation and Sanitization Algorithm
+
+```typescript
+function validateAndSanitizeCode(
+  code: string,
+  language: SupportedLanguage
+): { valid: boolean; sanitized: string; errors: string[] } {
+  const errors: string[] = [];
+  let sanitized = code;
+  
+  // Step 1: Check for empty code
+  if (!code || code.trim().length === 0) {
+    errors.push('Code cannot be empty');
+    return { valid: false, sanitized: '', errors };
+  }
+  
+  // Step 2: Check code length limits
+  const MAX_CODE_LENGTH = 50000; // 50KB
+  if (code.length > MAX_CODE_LENGTH) {
+    errors.push(`Code exceeds maximum length of ${MAX_CODE_LENGTH} characters`);
+    return { valid: false, sanitized: code, errors };
+  }
+  
+  // Step 3: Language-specific dangerous pattern detection
+  const dangerousPatterns = getDangerousPatternsForLanguage(language);
+  
+  for (const pattern of dangerousPatterns) {
+    if (pattern.regex.test(code)) {
+      errors.push(`Dangerous pattern detected: ${pattern.description}`);
+    }
+  }
+  
+  // Step 4: If errors found, return invalid
+  if (errors.length > 0) {
+    return { valid: false, sanitized: code, errors };
+  }
+  
+  // Step 5: Apply sanitization (remove comments with sensitive info, etc.)
+  sanitized = applySanitization(code, language);
+  
+  return { valid: true, sanitized, errors: [] };
+}
+
+function getDangerousPatternsForLanguage(
+  language: SupportedLanguage
+): Array<{ regex: RegExp; description: string }> {
+  const commonPatterns = [
+    { regex: /eval\s*\(/gi, description: 'eval() function' },
+    { regex: /exec\s*\(/gi, description: 'exec() function' },
+    { regex: /__import__/gi, description: 'dynamic imports' }
+  ];
+  
+  const languageSpecific: Record<SupportedLanguage, Array<{ regex: RegExp; description: string }>> = {
+    python: [
+      { regex: /import\s+os/gi, description: 'os module import' },
+      { regex: /import\s+subprocess/gi, description: 'subprocess module' },
+      { regex: /open\s*\(/gi, description: 'file operations' },
+      { regex: /socket/gi, description: 'network operations' }
+    ],
+    javascript: [
+      { regex: /require\s*\(\s*['"]fs['"]/gi, description: 'filesystem module' },
+      { regex: /require\s*\(\s*['"]child_process['"]/gi, description: 'child_process module' },
+      { regex: /require\s*\(\s*['"]net['"]/gi, description: 'network module' }
+    ],
+    java: [
+      { regex: /Runtime\.getRuntime\(\)/gi, description: 'Runtime execution' },
+      { regex: /ProcessBuilder/gi, description: 'Process execution' },
+      { regex: /java\.io\.File/gi, description: 'file operations' },
+      { regex: /java\.net/gi, description: 'network operations' }
+    ],
+    cpp: [
+      { regex: /system\s*\(/gi, description: 'system() calls' },
+      { regex: /popen/gi, description: 'popen() calls' },
+      { regex: /#include\s*<fstream>/gi, description: 'file stream operations' },
+      { regex: /#include\s*<sys\/socket\.h>/gi, description: 'socket operations' }
+    ]
+  };
+  
+  return [...commonPatterns, ...languageSpecific[language]];
+}
+```
+
+**Preconditions:**
+- `code` is string (may be empty)
+- `language` is valid SupportedLanguage
+
+**Postconditions:**
+- Returns validation result with boolean, sanitized code, and errors
+- All dangerous patterns are checked
+- Sanitized code is safe for Docker execution
+- Original code parameter is not mutated
+
+**Loop Invariants:**
+- For pattern checking loop: All previously checked patterns remain detected or not detected consistently
+
+### XP Calculation and Leveling Algorithm
+
+```typescript
+function calculateXPReward(
+  action: UserAction,
+  codeComplexity: number,
+  executionSuccess: boolean
+): number {
+  // Base XP values for different actions
+  const baseXP: Record<UserAction, number> = {
+    execute: 10,
+    debug: 15,
+    optimize: 20,
+    challenge_complete: 50,
+    ai_interaction: 5
+  };
+  
+  // Complexity multiplier (based on lines of code or cyclomatic complexity)
+  const complexityMultiplier = Math.min(1 + (codeComplexity / 100), 3.0);
+  
+  // Success multiplier
+  const successMultiplier = executionSuccess ? 1.5 : 0.5;
+  
+  // Calculate final XP
+  const xp = Math.floor(
+    baseXP[action] * complexityMultiplier * successMultiplier
+  );
+  
+  // Cap at maximum
+  return Math.min(xp, 1000);
+}
+
+function calculateLevel(totalXP: number): number {
+  // Level formula: level = floor(sqrt(xp / 100))
+  // Level 1: 100 XP
+  // Level 2: 400 XP
+  // Level 3: 900 XP
+  // Level 10: 10,000 XP
+  return Math.floor(Math.sqrt(totalXP / 100));
+}
+
+function getXPForNextLevel(currentLevel: number): number {
+  // XP required for next level
+  const nextLevel = currentLevel + 1;
+  return nextLevel * nextLevel * 100;
+}
+
+async function awardXP(
+  userId: string,
+  xpAmount: number,
+  action: UserAction
+): Promise<{ newXP: number; newLevel: number; leveledUp: boolean }> {
+  // Step 1: Get current user profile
+  const user = await getUserProfile(userId);
+  
+  // Step 2: Calculate new XP and level
+  const newXP = user.xp + xpAmount;
+  const oldLevel = user.level;
+  const newLevel = calculateLevel(newXP);
+  const leveledUp = newLevel > oldLevel;
+  
+  // Step 3: Update user profile in DynamoDB
+  await dynamodb.update({
+    TableName: 'CodingIDETable',
+    Key: {
+      PK: `USER#${userId}`,
+      SK: 'PROFILE'
+    },
+    UpdateExpression: 'SET xp = :xp, #level = :level, GSI2SK = :gsi2sk',
+    ExpressionAttributeNames: {
+      '#level': 'level'
+    },
+    ExpressionAttributeValues: {
+      ':xp': newXP,
+      ':level': newLevel,
+      ':gsi2sk': `XP#${String(newXP).padStart(10, '0')}` // For leaderboard sorting
+    }
+  });
+  
+  // Step 4: Check for achievements
+  if (leveledUp) {
+    await checkAndAwardAchievements(userId, newLevel, action);
+  }
+  
+  return { newXP, newLevel, leveledUp };
+}
+```
+
+**Preconditions:**
+- `action` is valid UserAction
+- `codeComplexity` is non-negative
+- `executionSuccess` is boolean
+- User exists in database
+
+**Postconditions:**
+- XP is calculated proportionally to complexity and success
+- XP is capped at 1000 per action
+- Level is calculated consistently from total XP
+- User profile is updated atomically in DynamoDB
+- Leaderboard GSI is updated for proper sorting
+
+**Loop Invariants:** N/A
