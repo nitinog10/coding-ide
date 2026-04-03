@@ -1,3 +1,4 @@
+```typescript
 export type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript';
 
 export interface User {
@@ -77,7 +78,9 @@ export interface AIServiceRequest {
   action: AIAction;
 }
 
-export interface AuthRequest extends Express.Request {
+import express from 'express';
+
+export interface AuthRequest extends express.Request {
   user?: {
     id: string;
     username: string;
@@ -86,3 +89,4 @@ export interface AuthRequest extends Express.Request {
   params: any;
   query: any;
 }
+```

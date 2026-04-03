@@ -1,3 +1,4 @@
+```typescript
 import axios from 'axios';
 import type { 
   ExecutionResult, 
@@ -7,6 +8,7 @@ import type {
   SupportedLanguage,
   AIAction
 } from '../types';
+import { handleError } from '../utils/errorHandler';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
@@ -20,8 +22,13 @@ const api = axios.create({
 // Code execution API
 export const codeAPI = {
   execute: async (code: string, language: SupportedLanguage, stdin?: string): Promise<{ success: boolean; output: ExecutionResult }> => {
-    const response = await api.post('/code/execute', { code, language, stdin });
-    return response.data;
+    try {
+      const response = await api.post('/code/execute', { code, language, stdin });
+      return response.data;
+    } catch (error) {
+      handleError(error);
+      throw error;
+    }
   }
 };
 
@@ -32,8 +39,13 @@ export const aiAPI = {
     codeContext: { language: SupportedLanguage; code: string; error?: string },
     action: AIAction
   ): Promise<AIResponse> => {
-    const response = await api.post('/ai/assist', { query, codeContext, action });
-    return response.data;
+    try {
+      const response = await api.post('/ai/assist', { query, codeContext, action });
+      return response.data;
+    } catch (error) {
+      handleError(error);
+      throw error;
+    }
   }
 };
 
@@ -79,3 +91,4 @@ export const userAPI = {
 };
 
 export default api;
+```

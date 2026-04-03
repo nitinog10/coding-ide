@@ -1,3 +1,4 @@
+```typescript
 import winston from 'winston';
 
 const logFormat = winston.format.combine(
@@ -10,7 +11,7 @@ const logFormat = winston.format.combine(
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+  winston.format.printf(({ timestamp, level, message,...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
       msg += ` ${JSON.stringify(meta)}`;
@@ -28,11 +29,11 @@ export const logger = winston.createLogger({
   ]
 });
 
-// Add console transport in development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV!== 'production') {
   logger.add(new winston.transports.Console({
     format: consoleFormat
   }));
 }
 
 export default logger;
+```
