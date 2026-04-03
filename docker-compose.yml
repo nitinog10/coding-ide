@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # DynamoDB Local for development
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: ai-ide-dynamodb
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    networks:
+      - ai-ide-network
+
+  # Backend service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-ide-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - dynamodb-local
+    networks:
+      - ai-ide-network
+    command: npm run dev
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-ide-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - ai-ide-network
+    command: npm run dev
+
+networks:
+  ai-ide-network:
+    driver: bridge
+
+volumes:
+  dynamodb-data:
