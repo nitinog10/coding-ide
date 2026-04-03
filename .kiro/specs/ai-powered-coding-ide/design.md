@@ -375,3 +375,296 @@ async function storeWorkspace(
 - `updatedAt` timestamp is set to current time
 
 **Loop Invariants:** N/A
+
+
+## Algorithmic Pseudocode
+
+### Main Code Execution Algorithm
+
+```typescript
+async function executeCodeInDocker(
+  code: string,
+  language: SupportedLanguage,
+  stdin: string = '',
+  timeout: number = 5000
+): Promise<ExecutionOutput> {
+  // Step 1: Validate and sanitize code
+  const validation = validateAndSanitizeCode(code, language);
+  
+  if (!validation.valid) {
+    return {
+      stdout: '',
+      stderr: `Validation errors:\n${validation.errors.join('\n')}`,
+      exitCode: 1,
+      executionTime: 0,
+      memoryUsed: 0,
+      timestamp: Date.now()
+    };
+  }
+  
+  // Step 2: Create Docker container with resource limits
+  const { containerId, cleanup } = await createDockerContainer(
+    language,
+    validation.sanitized,
+    stdin
+  );
+  
+  try {
+    // Step 3: Start container and capture output
+    const startTime = Date.now();
+    
+    const execPromise = docker.containers.get(containerId).start().then(() => {
+      return docker.containers.get(containerId).wait();
+    });
+    
+    // Step 4: Apply timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Execution timeout')), timeout);
+    });
+    
+    const result = await Promise.race([execPromise, timeoutPromise]);
+    
+    // Step 5: Collect output and metrics
+    const logs = await docker.containers.get(containerId).logs({
+      stdout: true,
+      stderr: true
+    });
+    
+    const stats = await docker.containers.get(containerId).stats({ stream: false });
+    
+    const executionTime = Date.now() - startTime;
+    
+    return {
+      stdout: logs.stdout,
+      stderr: logs.stderr,
+      exitCode: result.StatusCode,
+      executionTime,
+      memoryUsed: stats.memory_stats.usage,
+      timestamp: Date.now()
+    };
+    
+  } catch (error) {
+    // Handle timeout or execution error
+    return {
+      stdout: '',
+      stderr: error.message,
+      exitCode: 124, // Timeout exit code
+      executionTime: timeout,
+      memoryUsed: 0,
+      timestamp: Date.now()
+    };
+    
+  } finally {
+    // Step 6: Always cleanup container
+    await cleanup();
+  }
+}
+```
+
+**Preconditions:**
+- Docker daemon is running and accessible
+- Language-specific images are built and available
+- Code is provided as string
+- Timeout is reasonable (1000-30000ms)
+
+**Postconditions:**
+- Container is always cleaned up (via finally block)
+- Execution time never exceeds timeout + cleanup overhead
+- Output is captured completely or timeout error is returned
+- No containers are left running after function completes
+
+**Loop Invariants:** N/A (async operations, no explicit loops)
+
+### AI Request Processing Algorithm
+
+```typescript
+async function processAIRequest(
+  request: AIServiceRequest
+): Promise<AIServiceResponse> {
+  // Step 1: Fetch conversation history from DynamoDB
+  const history = await fetchConversationHistory(
+    request.workspaceId,
+    limit = 10
+  );
+  
+  // Step 2: Build context-aware prompt
+  const systemPrompt = buildSystemPrompt(request.action);
+  const userPrompt = buildUserPrompt(
+    request.query,
+    request.codeContext,
+    history
+  );
+  
+  // Step 3: Call Claude API
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [
+        ...history.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        { role: 'user', content: userPrompt }
+      ]
+    });
+    
+    // Step 4: Parse response and extract suggestions
+    const aiResponse = response.content[0].text;
+    const suggestions = extractCodeSuggestions(aiResponse, request.action);
+    
+    // Step 5: Store conversation in DynamoDB
+    await storeAIMessage({
+      workspaceId: request.workspaceId,
+      role: 'user',
+      content: request.query,
+      codeContext: request.codeContext,
+      timestamp: Date.now()
+    });
+    
+    await storeAIMessage({
+      workspaceId: request.workspaceId,
+      role: 'assistant',
+      content: aiResponse,
+      timestamp: Date.now()
+    });
+    
+    // Step 6: Return structured response
+    return {
+      success: true,
+      response: aiResponse,
+      suggestions
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      response: '',
+      error: `AI service error: ${error.message}`
+    };
+  }
+}
+```
+
+**Preconditions:**
+- User is authenticated and authorized
+- Workspace exists in database
+- Claude API key is configured
+- Request contains valid action type
+
+**Postconditions:**
+- Conversation history is persisted to database
+- AI response is contextually relevant to code
+- Suggestions are extracted and structured
+- Error handling returns descriptive messages
+
+**Loop Invariants:**
+- For history mapping loop: All messages maintain role and content integrity
+
+### DynamoDB Access Pattern Algorithm
+
+```typescript
+// Access Pattern 1: Get all workspaces for a user
+async function getUserWorkspaces(userId: string): Promise<Workspace[]> {
+  const params = {
+    TableName: 'CodingIDETable',
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':sk': 'WORKSPACE#'
+    }
+  };
+  
+  const result = await dynamodb.query(params);
+  return result.Items.map(item => mapItemToWorkspace(item));
+}
+
+// Access Pattern 2: Get workspace by ID (using GSI1)
+async function getWorkspaceById(workspaceId: string): Promise<Workspace | null> {
+  const params = {
+    TableName: 'CodingIDETable',
+    IndexName: 'GSI1',
+    KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK = :sk',
+    ExpressionAttributeValues: {
+      ':pk': `WORKSPACE#${workspaceId}`,
+      ':sk': 'METADATA'
+    }
+  };
+  
+  const result = await dynamodb.query(params);
+  return result.Items.length > 0 ? mapItemToWorkspace(result.Items[0]) : null;
+}
+
+// Access Pattern 3: Get execution history for workspace
+async function getExecutionHistory(
+  workspaceId: string,
+  limit: number = 20
+): Promise<ExecutionLogItem[]> {
+  const params = {
+    TableName: 'CodingIDETable',
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: {
+      ':pk': `WORKSPACE#${workspaceId}`,
+      ':sk': 'EXECUTION#'
+    },
+    ScanIndexForward: false, // Most recent first
+    Limit: limit
+  };
+  
+  const result = await dynamodb.query(params);
+  return result.Items;
+}
+
+// Access Pattern 4: Get leaderboard (using GSI2)
+async function getLeaderboard(limit: number = 100): Promise<UserProfile[]> {
+  const params = {
+    TableName: 'CodingIDETable',
+    IndexName: 'GSI2',
+    KeyConditionExpression: 'GSI2PK = :pk',
+    ExpressionAttributeValues: {
+      ':pk': 'LEADERBOARD'
+    },
+    ScanIndexForward: false, // Highest XP first
+    Limit: limit
+  };
+  
+  const result = await dynamodb.query(params);
+  return result.Items.map(item => mapItemToUserProfile(item));
+}
+
+// Access Pattern 5: Get AI conversation history
+async function fetchConversationHistory(
+  workspaceId: string,
+  limit: number = 10
+): Promise<AIMessage[]> {
+  const params = {
+    TableName: 'CodingIDETable',
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: {
+      ':pk': `WORKSPACE#${workspaceId}`,
+      ':sk': 'AI#'
+    },
+    ScanIndexForward: false, // Most recent first
+    Limit: limit
+  };
+  
+  const result = await dynamodb.query(params);
+  return result.Items.reverse(); // Oldest first for conversation context
+}
+```
+
+**Preconditions:**
+- DynamoDB table exists with correct schema
+- GSI1 and GSI2 are created and active
+- Input IDs are valid UUIDs or strings
+- Limit parameters are positive integers
+
+**Postconditions:**
+- Queries use key conditions (no scans)
+- Results are sorted appropriately
+- Empty arrays returned when no items found
+- All queries complete in O(log n) time
+
+**Loop Invariants:**
+- For mapping loops: All items are transformed consistently
