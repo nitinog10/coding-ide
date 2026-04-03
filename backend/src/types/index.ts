@@ -82,4 +82,7 @@ export interface AuthRequest extends Express.Request {
     id: string;
     username: string;
   };
+  body: any;
+  params: any;
+  query: any;
 }
