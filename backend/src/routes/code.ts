@@ -2,9 +2,9 @@ import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { executionService } from '../services/executionService';
 import { AppError } from '../middleware/errorHandler';
-import { SupportedLanguage } from '../types';
-import { logger } from '../utils/logger';
 import rateLimit from 'express-rate-limit';
+
+type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript';
 
 const router = Router();
 

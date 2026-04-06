@@ -2,9 +2,16 @@ import { Router, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import { aiService } from '../services/aiService';
 import { AppError } from '../middleware/errorHandler';
-import { AIAction, CodeContext } from '../types';
-import { logger } from '../utils/logger';
 import rateLimit from 'express-rate-limit';
+
+type AIAction = 'explain' | 'debug' | 'optimize' | 'convert' | 'chat';
+type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript';
+
+interface CodeContext {
+  language: SupportedLanguage;
+  code: string;
+  error?: string;
+}
 
 const router = Router();
 
