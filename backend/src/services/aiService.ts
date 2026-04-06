@@ -1,6 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AIAction, CodeContext, CodeSuggestion } from '../types';
-import { logger } from '../utils/logger';
+
+type AIAction = 'explain' | 'debug' | 'optimize' | 'convert' | 'chat';
+type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript';
+
+interface CodeContext {
+  language: SupportedLanguage;
+  code: string;
+  error?: string;
+}
+
+interface CodeSuggestion {
+  type: 'fix' | 'optimization' | 'alternative';
+  description: string;
+  code: string;
+  lineRange?: { start: number; end: number };
+}
 
 const USE_MOCK = !process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY === 'your-claude-api-key-here';
 
@@ -18,7 +32,7 @@ export class AIService {
   ): Promise<{ response: string; suggestions: CodeSuggestion[] }> {
     // Use mock service if no API key is configured
     if (USE_MOCK) {
-      logger.info('Using mock AI service (no Claude API key configured)', { action, language: codeContext.language });
+      console.log(`Using mock AI service for ${action} (${codeContext.language})`);
       return this.mockAssistWithCode(query, codeContext, action);
     }
 
@@ -26,7 +40,7 @@ export class AIService {
       const systemPrompt = this.buildSystemPrompt(action);
       const userPrompt = this.buildUserPrompt(query, codeContext, action);
 
-      logger.info('Calling Claude API', { action, language: codeContext.language });
+      console.log(`Calling Claude API: ${action} for ${codeContext.language}`);
 
       const response = await anthropic!.messages.create({
         model: MODEL,

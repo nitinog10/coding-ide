@@ -1,6 +1,16 @@
 import Docker from 'dockerode';
-import { SupportedLanguage, ExecutionOutput } from '../types';
-import { logger } from '../utils/logger';
+
+type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript';
+
+interface ExecutionOutput {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  executionTime: number;
+  memoryUsed: number;
+  timestamp: number;
+}
+
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -103,7 +113,7 @@ export class ExecutionService {
       const executionTime = Date.now() - startTime;
 
       if (error.message === 'Execution timeout') {
-        logger.warn('Code execution timeout', { language, timeout });
+        console.warn(`Code execution timeout: ${language} (${timeout}ms)`);
         return {
           stdout: '',
           stderr: 'Execution timed out',
@@ -114,7 +124,7 @@ export class ExecutionService {
         };
       }
 
-      logger.error('Code execution error', { error: error.message, language });
+      console.error(`Code execution error (${language}):`, error.message);
       return {
         stdout: '',
         stderr: `Execution error: ${error.message}`,
@@ -131,7 +141,7 @@ export class ExecutionService {
           await container.stop();
           await container.remove();
         } catch (error) {
-          logger.error('Error cleaning up container', { error });
+          console.error('Error cleaning up container:', error);
         }
       }
     }

@@ -58,7 +58,7 @@ router.post(
       });
 
     } catch (error: any) {
-      logger.error('AI assistance error', { error: error.message });
+      console.error('AI assistance error:', error.message);
       next(new AppError(error.message || 'AI service unavailable', 500));
     }
   }
