@@ -7,6 +7,7 @@ interface CodeContext {
   language: SupportedLanguage;
   code: string;
   error?: string;
+  lineNumber?: number;
 }
 
 interface CodeSuggestion {
@@ -54,11 +55,7 @@ export class AIService {
       const aiResponse = response.content[0].type === 'text' ? response.content[0].text : '';
       const suggestions = this.extractCodeSuggestions(aiResponse, action);
 
-      logger.info('Claude API response received', { 
-        action, 
-        responseLength: aiResponse.length,
-        suggestionsCount: suggestions.length
-      });
+      console.log(`Claude API response received: ${action} (${aiResponse.length} chars, ${suggestions.length} suggestions)`);
 
       return {
         response: aiResponse,
@@ -66,7 +63,7 @@ export class AIService {
       };
 
     } catch (error: any) {
-      logger.error('AI service error', { error: error.message, action });
+      console.error(`AI service error (${action}):`, error.message);
       throw new Error(`AI service error: ${error.message}`);
     }
   }
