@@ -17,7 +17,7 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const [code, setCodeState] = useState<string>('');
+  const [code, setCodeState] = useState<string>('# Python Hello World\nprint("Hello, World!")\nprint("Welcome to CodeIDE!")\n\n# Simple calculation\nfor i in range(1, 6):\n    print(f"Number: {i}, Square: {i**2}")');
   const [language, setLanguageState] = useState<SupportedLanguage>('python');
   const [output, setOutput] = useState<ExecutionResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);

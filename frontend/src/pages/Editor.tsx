@@ -27,9 +27,11 @@ export default function Editor() {
     setOutput(null);
 
     try {
+      console.log('Executing code:', { language, codeLength: code.length });
       const result = await codeAPI.execute(code, language);
+      console.log('Execution result:', result);
       
-      if (result.success && result.output) {
+      if (result && result.output) {
         setOutput(result.output);
         
         if (result.output.exitCode === 0) {
@@ -38,10 +40,11 @@ export default function Editor() {
           toast.error('Code execution failed - check output for errors');
         }
       } else {
-        toast.error('Execution failed - no output received');
+        console.error('Invalid result format:', result);
+        toast.error('Execution failed - invalid response format');
         setOutput({
           stdout: '',
-          stderr: 'Execution failed - no output received from server',
+          stderr: 'Execution failed - invalid response from server',
           exitCode: 1,
           executionTime: 0,
           memoryUsed: 0,
