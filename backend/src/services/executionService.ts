@@ -138,10 +138,17 @@ export class ExecutionService {
       // Cleanup container
       if (container) {
         try {
-          await container.stop();
+          // Check container state before stopping
+          const containerInfo = await container.inspect();
+          if (containerInfo.State.Running) {
+            await container.stop();
+          }
           await container.remove();
-        } catch (error) {
-          console.error('Error cleaning up container:', error);
+        } catch (error: any) {
+          // Ignore "container already stopped" errors
+          if (error.statusCode !== 304 && !error.message?.includes('already stopped')) {
+            console.error('Error cleaning up container:', error);
+          }
         }
       }
     }

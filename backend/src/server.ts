@@ -48,6 +48,11 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// Test endpoint
+app.get('/api/test', (_req, res) => {
+  res.json({ message: 'API is working!' });
+});
+
 // API routes (no auth required)
 app.use('/api/code', codeRoutes);
 app.use('/api/ai', aiRoutes);
