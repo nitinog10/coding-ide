@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ActivityBar from '../components/ActivityBar';
 import FileExplorer from '../components/FileExplorer';
 import CodeEditor from '../components/CodeEditor';
@@ -13,6 +13,9 @@ export default function Editor() {
   const { code, language, setCode, setLanguage, setOutput, isExecuting, setIsExecuting } = useEditor();
   const [activeView, setActiveView] = useState<'explorer' | 'search' | 'git' | 'extensions'>('explorer');
   const [currentFile, setCurrentFile] = useState('untitled.py');
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [outputHeight, setOutputHeight] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
 
   const handleRunCode = async () => {
     if (!code.trim()) {
