@@ -41,14 +41,14 @@ export default function FileExplorer({ onFileSelect }: FileExplorerProps) {
           id: '2', 
           name: 'hello.py', 
           type: 'file', 
-          content: '# Python Hello World\nprint("Hello, World!")\n\n# Try modifying this code\nname = input("Enter your name: ")\nprint(f"Hello, {name}!")', 
+          content: '# Python Hello World\nprint("Hello, World!")\nprint("Welcome to CodeIDE!")\n\n# Simple calculation\nfor i in range(1, 6):\n    print(f"Number: {i}, Square: {i**2}")', 
           language: 'python' 
         },
         { 
           id: '3', 
           name: 'app.js', 
           type: 'file', 
-          content: '// JavaScript Hello World\nconsole.log("Hello, World!");\n\n// Try modifying this code\nconst name = "Developer";\nconsole.log(`Hello, ${name}!`);', 
+          content: '// JavaScript Hello World\nconsole.log("Hello, World!");\nconsole.log("Welcome to CodeIDE!");\n\n// Simple loop\nfor (let i = 1; i <= 5; i++) {\n    console.log(`Number: ${i}, Square: ${i * i}`);\n}', 
           language: 'javascript' 
         }
       ]
@@ -62,14 +62,14 @@ export default function FileExplorer({ onFileSelect }: FileExplorerProps) {
           id: '5', 
           name: 'fibonacci.cpp', 
           type: 'file', 
-          content: '#include <iostream>\nusing namespace std;\n\nint fibonacci(int n) {\n    if (n <= 1) return n;\n    return fibonacci(n-1) + fibonacci(n-2);\n}\n\nint main() {\n    int n = 10;\n    cout << "Fibonacci(" << n << ") = " << fibonacci(n) << endl;\n    return 0;\n}', 
+          content: '#include <iostream>\nusing namespace std;\n\nint fibonacci(int n) {\n    if (n <= 1) return n;\n    return fibonacci(n-1) + fibonacci(n-2);\n}\n\nint main() {\n    cout << "Fibonacci sequence:" << endl;\n    for (int i = 0; i < 10; i++) {\n        cout << "F(" << i << ") = " << fibonacci(i) << endl;\n    }\n    return 0;\n}', 
           language: 'cpp' 
         },
         { 
           id: '6', 
           name: 'HelloWorld.java', 
           type: 'file', 
-          content: 'public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n        \n        // Try modifying this code\n        String name = "Java Developer";\n        System.out.println("Hello, " + name + "!");\n    }\n}', 
+          content: 'public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n        System.out.println("Welcome to CodeIDE!");\n        \n        // Simple loop\n        for (int i = 1; i <= 5; i++) {\n            System.out.println("Number: " + i + ", Square: " + (i * i));\n        }\n    }\n}', 
           language: 'java' 
         }
       ]

@@ -28,18 +28,33 @@ export default function Editor() {
 
     try {
       const result = await codeAPI.execute(code, language);
-      setOutput(result.output);
       
-      if (result.success) {
-        toast.success('Code executed successfully!');
+      if (result.success && result.output) {
+        setOutput(result.output);
+        
+        if (result.output.exitCode === 0) {
+          toast.success('Code executed successfully!');
+        } else {
+          toast.error('Code execution failed - check output for errors');
+        }
       } else {
-        toast.error('Code execution failed');
+        toast.error('Execution failed - no output received');
+        setOutput({
+          stdout: '',
+          stderr: 'Execution failed - no output received from server',
+          exitCode: 1,
+          executionTime: 0,
+          memoryUsed: 0,
+          timestamp: Date.now()
+        });
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Execution failed');
+      console.error('Execution error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Execution failed';
+      toast.error(`Execution failed: ${errorMessage}`);
       setOutput({
         stdout: '',
-        stderr: error.response?.data?.error || 'Execution failed',
+        stderr: `Error: ${errorMessage}\n\nMake sure the backend server is running on port 3000.`,
         exitCode: 1,
         executionTime: 0,
         memoryUsed: 0,
