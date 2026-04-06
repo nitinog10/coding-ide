@@ -42,7 +42,7 @@ router.post(
 
       const { query, codeContext, action } = req.body;
 
-      logger.info('AI assistance requested', { action, language: codeContext.language });
+      console.log(`AI assistance requested: ${action} for ${codeContext.language}`);
 
       // Call AI service
       const result = await aiService.assistWithCode(

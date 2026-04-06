@@ -39,7 +39,7 @@ router.post(
         return next(new AppError(`Code exceeds maximum size of ${maxSize} bytes`, 400));
       }
 
-      logger.info('Executing code', { language, codeLength: code.length });
+      console.log(`Executing ${language} code (${code.length} chars)`);
 
       // Execute code
       const output = await executionService.executeCode(
