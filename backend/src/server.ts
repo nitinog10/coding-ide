@@ -2,19 +2,25 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { logger } from './utils/logger';
+import winston from 'winston';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 
 // Import routes
-import authRoutes from './routes/auth';
 import codeRoutes from './routes/code';
 import aiRoutes from './routes/ai';
-import projectRoutes from './routes/projects';
-import userRoutes from './routes/user';
 
 // Load environment variables
 dotenv.config();
+
+// Simple logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.simple(),
+  transports: [
+    new winston.transports.Console()
+  ]
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,12 +48,9 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
+// API routes (no auth required)
 app.use('/api/code', codeRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/user', userRoutes);
 
 // 404 handler
 app.use((_req, res) => {

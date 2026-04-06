@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
 
 export class AppError extends Error {
   statusCode: number;
@@ -20,12 +19,11 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   // Log error
-  logger.error('Error occurred', {
+  console.error('Error occurred:', {
     error: err.message,
     stack: err.stack,
     path: req.path,
-    method: req.method,
-    userId: (req as any).user?.id
+    method: req.method
   });
 
   // Handle operational errors
@@ -57,10 +55,7 @@ export const errorHandler = (
   }
 
   // Handle unknown errors
-  logger.error('Unhandled error', {
-    error: err.message,
-    stack: err.stack
-  });
+  console.error('Unhandled error:', err);
 
   return res.status(500).json({
     error: 'An unexpected error occurred'
